@@ -1006,4 +1006,4 @@ int LaplacePetsc::precon(Vec x, Vec y) {
   return 0;
 }
 
-#endif // BOUT_HAS_PETSC_3_3
+#endif // BOUT_HAS_PETSC

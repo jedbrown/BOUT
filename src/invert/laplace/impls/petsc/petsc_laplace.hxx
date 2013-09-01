@@ -145,6 +145,6 @@ private:
   #endif
 };
 
-#endif //BOUT_HAS_PETSC_DEV
+#endif //BOUT_HAS_PETSC
 
 #endif //__PETSC_LAPLACE_H__
