@@ -746,7 +746,7 @@ const FieldPerp LaplacePetsc::solve(const FieldPerp &b, const FieldPerp &x0) {
       //ierr = PCShellSetContext(pc,this);CHKERRQ(ierr);
       //ierr = KSPSetPCSide(ksp, PC_RIGHT);CHKERRQ(ierr);
     }
-    
+    KSPSetOptionsPrefix(ksp,"lap_");
     KSPSetFromOptions( ksp );           
   }
   }

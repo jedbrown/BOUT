@@ -155,7 +155,7 @@ int PetscSolver::init(bool restarting, int NOUT, BoutReal TIMESTEP) {
   ierr = TSCreate(BoutComm::get(),&ts);CHKERRQ(ierr);
   ierr = TSSetProblemType(ts,TS_NONLINEAR);CHKERRQ(ierr);
 #ifdef PETSC_HAS_SUNDIALS
-  ierr = TSSetType(ts,TSSUNDIALS);CHKERRQ(ierr);
+  // ierr = TSSetType(ts,TSSUNDIALS);CHKERRQ(ierr);
 #endif
   ierr = TSSetApplicationContext(ts, this);CHKERRQ(ierr);
 
@@ -253,7 +253,7 @@ int PetscSolver::init(bool restarting, int NOUT, BoutReal TIMESTEP) {
     ierr = MatCreateShell(comm, local_N, local_N, neq, neq, this, &Jmf);
     ierr = MatShellSetOperation(Jmf, MATOP_MULT, (void (*)(void)) PhysicsJacobianApply); CHKERRQ(ierr);
     ierr = TSSetIJacobian(ts, Jmf, Jmf, solver_ijacobian, this); CHKERRQ(ierr);
-  }else {
+  } else {
     // Use finite difference approximation
     ierr = MatCreateSNESMF(snes,&Jmf);CHKERRQ(ierr);
     ierr = SNESSetJacobian(snes,Jmf,Jmf,MatMFFDComputeJacobian,this);CHKERRQ(ierr);
@@ -267,11 +267,16 @@ int PetscSolver::init(bool restarting, int NOUT, BoutReal TIMESTEP) {
 
   if(use_precon && (prefunc != NULL)) {
 
-    ierr = SNESGetPC(snes,&psnes);CHKERRQ(ierr);
-    ierr = SNESGetKSP(psnes,&nksp);CHKERRQ(ierr);
-    ierr = KSPGetPC(nksp,&npc);CHKERRQ(ierr);
-    ierr = SNESSetType(psnes,SNESSHELL);CHKERRQ(ierr);
-    ierr = SNESShellSetSolve(psnes,PhysicsSNESApply);CHKERRQ(ierr);
+    if (0) {
+      ierr = SNESGetPC(snes,&psnes);CHKERRQ(ierr);
+      ierr = SNESGetKSP(psnes,&nksp);CHKERRQ(ierr);
+      ierr = KSPGetPC(nksp,&npc);CHKERRQ(ierr);
+      ierr = SNESSetType(psnes,SNESSHELL);CHKERRQ(ierr);
+      ierr = SNESShellSetSolve(psnes,PhysicsSNESApply);CHKERRQ(ierr);
+    } else {
+      ierr = SNESGetKSP(snes,&nksp);CHKERRQ(ierr);
+      ierr = KSPGetPC(nksp,&npc);CHKERRQ(ierr);
+    }
 
     // Use a user-supplied preconditioner
 
@@ -291,7 +296,7 @@ int PetscSolver::init(bool restarting, int NOUT, BoutReal TIMESTEP) {
     ierr = TSSetIJacobian(ts, Jmf, Jmf, solver_ijacobian, this);
 
     // Use right preconditioner
-    ierr = KSPSetPCSide(ksp, PC_RIGHT);CHKERRQ(ierr);
+    //ierr = KSPSetPCSide(ksp, PC_RIGHT);CHKERRQ(ierr);
 
   }else {
     // Default to no preconditioner
@@ -327,7 +332,7 @@ int PetscSolver::init(bool restarting, int NOUT, BoutReal TIMESTEP) {
     ierr = MatSetFromOptions(J);CHKERRQ(ierr);
     ierr = MatLoad(J, fd);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&fd);CHKERRQ(ierr);
-  } else { // create Jacobian matrix
+  } else if (0) { // create Jacobian matrix
 
     //PetscInt MXSUB = mesh->xend - mesh->xstart + 1;
     //PetscInt MYSUB = mesh->yend - mesh->ystart + 1;
@@ -346,7 +351,7 @@ int PetscSolver::init(bool restarting, int NOUT, BoutReal TIMESTEP) {
     // PetscInt n = MXSUB*MYSUB*nz*dof;
     PetscInt sw = 2;
     PetscInt dim = 3;
-    PetscInt cols = sw*2*3+1;
+    PetscInt cols = sw*2*dim+1;
     PetscInt prealloc; // = cols*dof;
     PetscInt preallocblock = cols*dof*dof; //prealloc*dof;
 
@@ -356,7 +361,7 @@ int PetscSolver::init(bool restarting, int NOUT, BoutReal TIMESTEP) {
     ierr = MatSetFromOptions(J);CHKERRQ(ierr);
 
     // Get nonzero pattern of J - color_none !!!
-    prealloc = cols*dof*dof;
+    prealloc = cols*dof;
     ierr = MatSeqAIJSetPreallocation(J,prealloc,PETSC_NULL);CHKERRQ(ierr);
     ierr = MatMPIAIJSetPreallocation(J,prealloc,PETSC_NULL,prealloc,PETSC_NULL);CHKERRQ(ierr);
 
@@ -526,14 +531,16 @@ int PetscSolver::init(bool restarting, int NOUT, BoutReal TIMESTEP) {
     }
   }
 
-  // Create coloring context of J to be used during time stepping
-  ierr = PetscPrintf(PETSC_COMM_WORLD," Create coloring ...\n");
-  ierr = MatGetColoring(J,MATCOLORINGSL,&iscoloring);CHKERRQ(ierr);
-  ierr = MatFDColoringCreate(J,iscoloring,&matfdcoloring);CHKERRQ(ierr);
-  ierr = MatFDColoringSetFromOptions(matfdcoloring);CHKERRQ(ierr);
-  ierr = ISColoringDestroy(&iscoloring);CHKERRQ(ierr);
-  ierr = MatFDColoringSetFunction(matfdcoloring,(PetscErrorCode (*)(void))solver_f,this);CHKERRQ(ierr);
-  ierr = SNESSetJacobian(snes,J,J,SNESComputeJacobianDefaultColor,matfdcoloring);CHKERRQ(ierr);
+  if (0) {
+    // Create coloring context of J to be used during time stepping
+    ierr = PetscPrintf(PETSC_COMM_WORLD," Create coloring ...\n");
+    ierr = MatGetColoring(J,MATCOLORINGSL,&iscoloring);CHKERRQ(ierr);
+    ierr = MatFDColoringCreate(J,iscoloring,&matfdcoloring);CHKERRQ(ierr);
+    ierr = MatFDColoringSetFromOptions(matfdcoloring);CHKERRQ(ierr);
+    ierr = ISColoringDestroy(&iscoloring);CHKERRQ(ierr);
+    ierr = MatFDColoringSetFunction(matfdcoloring,(PetscErrorCode (*)(void))solver_f,this);CHKERRQ(ierr);
+    ierr = SNESSetJacobian(snes,J,J,SNESComputeJacobianDefaultColor,matfdcoloring);CHKERRQ(ierr);
+  }
 
   // Write J in binary for study - see ~petsc/src/mat/examples/tests/ex124.c
   ierr = PetscOptionsHasName(PETSC_NULL,"-J_write",&J_write);CHKERRQ(ierr);

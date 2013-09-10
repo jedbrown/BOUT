@@ -4,7 +4,7 @@
 ##################################################
 # Global settings used by the core code
 
-NOUT = 100          # number of time-steps
+NOUT = 3          # number of time-steps
 TIMESTEP = 1       # time between outputs
 archive = 20        # Archive restart files after this number of outputs
 wall_limit = 1.55  # wall time limit (in hours)
@@ -16,6 +16,11 @@ TwistOrder = 0      # order of twist-shift interpolation
 
 MZ = 17             # number of points in z direction (2^n + 1)
 ZPERIOD = 15        # Fraction of a torus to simulate
+
+MXG = 2
+MYG = 2
+
+NXPE = 1            # Number of processor in X
 
 grid = "cbm18_dens8.grid_nx68ny64.nc"  # Grid file
 
@@ -39,6 +44,9 @@ group_nonblock = false  # Use non-blocking group operations?
 # Laplacian inversion routines
 
 [laplace]
+type=petsc
+flags=0
+pctype=gamg
 
 # max_mode = 16  # Maximum N to solve for
 
@@ -74,13 +82,15 @@ upwind = W3
 # Solver settings
 
 [solver]
+type = petsc
+# diagnose = true
 
 # mudq, mldq, mukeep, mlkeep preconditioner options
 ATOL = 1.0e-8 # absolute tolerance
 RTOL = 1.0e-5  # relative tolerance
 
-use_precon = false    # Use preconditioner: User-supplied or BBD
-use_jacobian = false  # Use user-supplied Jacobian
+use_precon = true    # Use preconditioner: User-supplied or BBD
+use_jacobian = true  # Use user-supplied Jacobian
 
 mxstep = 5000   # Number of internal steps between outputs
 adams_moulton = false # Use Adams-Moulton method (default is BDF)
